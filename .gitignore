@@ -9,6 +9,8 @@
 
 # Misc Stuff
 *.directory
+/.idea/
+/.vscode/
 /build/
 /run/
 

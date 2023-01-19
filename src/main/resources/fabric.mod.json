@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "modid",
+  "version": "${version}",
+
+  "name": "Programmable Bots",
+  "description": "A Minecraft mod that lets you program bots to automate things..... NO! This is not CC",
+  "authors": [
+    "Cowboy8625",
+    "BJTMastermind"
+  ],
+  "contact": {
+    "homepage": "https://github.com/Cowboy8625/ProgrammableBots",
+    "sources": "https://github.com/Cowboy8625/ProgrammableBots"
+  },
+
+  "license": "GPL-3.0",
+  "icon": "assets/programmable_bots/icon.png",
+
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "me.codex.programmable_bots.ProgrammableBots"
+    ]
+  },
+  "mixins": [],
+
+  "depends": {
+    "fabricloader": ">=0.14.11",
+    "fabric-api": "*",
+    "minecraft": "~1.19.3",
+    "java": ">=17"
+  },
+  "suggests": {
+    "another-mod": "*"
+  }
+}

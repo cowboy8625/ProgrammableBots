@@ -7,8 +7,12 @@
 # BlueJ files
 *.ctxt
 
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
+# Misc Stuff
+*.directory
+/.idea/
+/.vscode/
+/build/
+/run/
 
 # Package Files #
 *.jar

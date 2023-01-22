@@ -9,6 +9,7 @@
 
 # Misc Stuff
 *.directory
+/.gradle/
 /.idea/
 /.vscode/
 /bin/

@@ -1,8 +1,8 @@
 package me.codex.programmable_bots.item;
 
 import me.codex.programmable_bots.ProgrammableBots;
-import me.codex.programmable_bots.block.ModBlocks;
 import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
+import net.minecraft.block.Blocks;
 import net.minecraft.item.ItemGroup;
 import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;
@@ -16,7 +16,7 @@ public class ModItemGroup {
 
         PROGRAMMABLE_BOTS = FabricItemGroup.builder(new Identifier(ProgrammableBots.MODID, "tab"))
             .displayName(Text.translatable("itemGroup.programmable_bots.tab"))
-            .icon(() -> new ItemStack(ModBlocks.BOT_BLOCK))
+            .icon(() -> new ItemStack(Blocks.COMMAND_BLOCK))
             .build();
     }
 }

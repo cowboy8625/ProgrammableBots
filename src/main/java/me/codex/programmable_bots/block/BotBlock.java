@@ -5,7 +5,7 @@ import org.jetbrains.annotations.Nullable;
 import me.codex.programmable_bots.block.entity.BotBlockEntity;
 import me.codex.programmable_bots.block.entity.ModBlockEntities;
 import net.minecraft.block.Block;
-import net.minecraft.block.BlockEntityProvider;
+// import net.minecraft.block.BlockEntityProvider;
 import net.minecraft.block.BlockRenderType;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.BlockWithEntity;

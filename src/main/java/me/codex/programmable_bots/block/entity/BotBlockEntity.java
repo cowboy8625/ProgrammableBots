@@ -78,35 +78,37 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
     }
 
     // Next update thing.
-    // private static String fromList(NbtElement nbt) {
-    //     String output = "";
-    //     if (nbt.getType() == 9) {
-    //         NbtList list = (NbtList) nbt;
+    private static String fromList(NbtElement nbt) {
+        String output = "";
+        if (nbt.getType() == 9) {
+            NbtList list = (NbtList) nbt;
 
-    //         for (int i = 0; i < list.size(); i++) {
-    //             output += list.get(i).toString().replace("\"", "").replace("'", "");
-    //             if (i < list.size() - 1) {
-    //                 output += "\n";
-    //             }
-    //         }
-    //         return output;
-    //     }
-    //     return "";
-    // }
+            for (int i = 0; i < list.size(); i++) {
+                output += list.get(i).toString().replace("\"", "").replace("'", "");
+                if (i < list.size() - 1) {
+                    output += "\n";
+                }
+            }
+            return output;
+        }
+        return "";
+    }
 
     // Runs every tick
     public static void tick(World world, BlockPos pos, BlockState state, BotBlockEntity entity) {
         if (world.isClient) {
             return;
         }
+        world.getServer().sendMessage(Text.literal("Hello from server"));
 
-        // Next update thing.
-        // if (entity.hasBook()) {
-        //     ItemStack stack = entity.getStack(0);
-        //     NbtElement pages = stack.getNbt().get("pages");
-        //     String content = fromList(pages);
-
-        //     world.getServer().sendMessage(Text.literal(content));
-        // }
+        // // Next update thing.
+        if (entity.hasBook()) {
+            ItemStack stack = entity.getStack(0);
+            NbtElement pages = stack.getNbt().get("pages");
+            String content = fromList(pages);
+            for (PlayerEntity player : world.getPlayers()) {
+                player.sendMessage(Text.literal(content), true);
+            }
+        }
     }
 }

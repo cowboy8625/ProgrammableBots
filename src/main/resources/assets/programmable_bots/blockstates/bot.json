@@ -1,0 +1,19 @@
+{
+    "variants": {
+        "facing=north": {
+            "model": "programmable_bots:block/bot"
+        },
+        "facing=south": {
+            "model": "programmable_bots:block/bot",
+            "y": 180
+        },
+        "facing=east": {
+            "model": "programmable_bots:block/bot",
+            "y": 90
+        },
+        "facing=west": {
+            "model": "programmable_bots:block/bot",
+            "y": 270
+        }
+    }
+}

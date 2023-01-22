@@ -21,6 +21,9 @@
   "entrypoints": {
     "main": [
       "me.codex.programmable_bots.ProgrammableBots"
+    ],
+    "client": [
+      "me.codex.programmable_bots.ProgrammableBotsClient"
     ]
   },
   "mixins": [],

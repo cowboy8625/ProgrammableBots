@@ -77,7 +77,10 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
             NbtList list = (NbtList) nbt;
 
             for (int i = 0; i < list.size(); i++) {
-                String[] page = list.get(i).toString().replace("\"", "").replace("'", "").split("\n");
+                String listAsStr = list.toString();
+                listAsStr = listAsStr.replace("\"", "");
+                listAsStr = listAsStr.replace("'", "");
+                String[] page = listAsStr.split("\n");
 
                 for (String line : page) {
                     if (!line.isEmpty()) {
@@ -108,39 +111,30 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
 
                 switch (line) {
                     case "forward":
-                        world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
                         entity.moveBot(world, entity, state, MoveDirections.FORWARD);
                         break;
                     case "back":
-                        world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
                         entity.moveBot(world, entity, state, MoveDirections.BACK);
                         break;
                     case "up":
-                        world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
                         entity.moveBot(world, entity, state, MoveDirections.UP);
                         break;
                     case "down":
-                        world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
                         entity.moveBot(world, entity, state, MoveDirections.DOWN);
                         break;
                     case "left":
-                        world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
                         entity.moveBot(world, entity, state, MoveDirections.LEFT);
                         break;
                     case "right":
-                        world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
                         entity.moveBot(world, entity, state, MoveDirections.RIGHT);
                         break;
                     case "turn left":
-                        world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
                         entity.turn(world, entity, state, TurnDirections.LEFT);
                         break;
                     case "turn right":
-                        world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
                         entity.turn(world, entity, state, TurnDirections.RIGHT);
                         break;
                     case "turn around":
-                        world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
                         entity.turn(world, entity, state, TurnDirections.AROUND);
                         break;
                     default:
@@ -305,7 +299,7 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
                         world.setBlockState(entity.pos, state.with(BotBlock.FACING, Direction.get(AxisDirection.POSITIVE, Axis.Z)));
                         break;
                 }
-                world.getServer().sendMessage(Text.literal("Is Executing: "+((BotBlockEntity) world.getBlockEntity(entity.pos)).executingBook));
+                entity.executingBook = false;
                 break;
             case "south":
                 switch (turn) {
@@ -319,7 +313,7 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
                         world.setBlockState(entity.pos, state.with(BotBlock.FACING, Direction.get(AxisDirection.NEGATIVE, Axis.Z)));
                         break;
                 }
-                world.getServer().sendMessage(Text.literal("Is Executing: "+((BotBlockEntity) world.getBlockEntity(entity.pos)).executingBook));
+                entity.executingBook = false;
                 break;
             case "east":
                 switch (turn) {
@@ -333,7 +327,7 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
                         world.setBlockState(entity.pos, state.with(BotBlock.FACING, Direction.get(AxisDirection.NEGATIVE, Axis.X)));
                         break;
                 }
-                world.getServer().sendMessage(Text.literal("Is Executing: "+((BotBlockEntity) world.getBlockEntity(entity.pos)).executingBook));
+                entity.executingBook = false;
                 break;
             case "west":
                 switch (turn) {
@@ -347,7 +341,7 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
                         world.setBlockState(entity.pos, state.with(BotBlock.FACING, Direction.get(AxisDirection.POSITIVE, Axis.X)));
                         break;
                 }
-                world.getServer().sendMessage(Text.literal("Is Executing: "+((BotBlockEntity) world.getBlockEntity(entity.pos)).executingBook));
+                entity.executingBook = false;
                 break;
         }
     }

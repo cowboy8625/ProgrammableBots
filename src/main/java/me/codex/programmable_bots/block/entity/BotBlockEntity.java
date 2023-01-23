@@ -108,27 +108,37 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
                 switch (line) {
                     case "forward":
                         world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
-                        entity.movingBot(world, entity, state, MoveDirections.FORWARD, entity.bookLineIndex);
+                        entity.moveBot(world, entity, state, MoveDirections.FORWARD, entity.bookLineIndex);
                         break;
                     case "back":
                         world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
-                        entity.movingBot(world, entity, state, MoveDirections.BACK, entity.bookLineIndex);
+                        entity.moveBot(world, entity, state, MoveDirections.BACK, entity.bookLineIndex);
                         break;
                     case "up":
                         world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
-                        entity.movingBot(world, entity, state, MoveDirections.UP, entity.bookLineIndex);
+                        entity.moveBot(world, entity, state, MoveDirections.UP, entity.bookLineIndex);
                         break;
                     case "down":
                         world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
-                        entity.movingBot(world, entity, state, MoveDirections.DOWN, entity.bookLineIndex);
+                        entity.moveBot(world, entity, state, MoveDirections.DOWN, entity.bookLineIndex);
                         break;
                     case "left":
                         world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
-                        entity.movingBot(world, entity, state, MoveDirections.LEFT, entity.bookLineIndex);
+                        entity.moveBot(world, entity, state, MoveDirections.LEFT, entity.bookLineIndex);
                         break;
                     case "right":
                         world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
-                        entity.movingBot(world, entity, state, MoveDirections.RIGHT, entity.bookLineIndex);
+                        entity.moveBot(world, entity, state, MoveDirections.RIGHT, entity.bookLineIndex);
+                        break;
+                    case "turn left":
+                        world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
+                        entity.turn(world, entity, state, TurnDirections.LEFT);
+                        break;
+                    case "turn right":
+                        world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
+                        break;
+                    case "turn around":
+                        world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
                         break;
                     default:
                         break;
@@ -147,11 +157,11 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
  *  West = -X
  */
 
-    private void movingBot(World world, BotBlockEntity entity, BlockState state, MoveDirections direction, int bookLineIndex) {
+    private void moveBot(World world, BotBlockEntity entity, BlockState state, MoveDirections direction, int bookLineIndex) {
         BlockPos currentPos = entity.getPos();
+        BlockPos moveTo;
         switch (state.get(BotBlock.FACING).toString()) {
             case "north":
-                BlockPos moveTo;
                 switch (direction) {
                     case FORWARD:
                         moveTo = currentPos.add(0, 0, -1);
@@ -166,46 +176,131 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
                         moveTo = currentPos.add(0, -1, 0);
                         break;
                     case LEFT:
+                        moveTo = currentPos.add(-1, 0, 0);
+                        break;
+                    case RIGHT:
                         moveTo = currentPos.add(1, 0, 0);
                         break;
                     default:
-                        moveTo = currentPos.add(-1, 0, 0);
+                        moveTo = currentPos.add(0, 0, 0);
                         break;
                 }
-
-                if (!world.isAir(moveTo)) {
-                    return;
-                }
-
-                world.setBlockState(moveTo, state);
-
-                BotBlockEntity newEntity = (BotBlockEntity) world.getBlockEntity(moveTo);
-                NbtCompound nbt = new NbtCompound();
-                entity.writeNbt(nbt);
-                newEntity.readNbt(nbt);
-                newEntity.bookLineIndex = bookLineIndex;
-
-                world.removeBlockEntity(currentPos);
-                world.removeBlock(currentPos, true);
+                move(world, entity, state, moveTo);
                 break;
             case "south":
+                switch (direction) {
+                    case FORWARD:
+                        moveTo = currentPos.add(0, 0, 1);
+                        break;
+                    case BACK:
+                        moveTo = currentPos.add(0, 0, -1);
+                        break;
+                    case UP:
+                        moveTo = currentPos.add(0, 1, 0);
+                        break;
+                    case DOWN:
+                        moveTo = currentPos.add(0, -1, 0);
+                        break;
+                    case LEFT:
+                        moveTo = currentPos.add(1, 0, 0);
+                        break;
+                    case RIGHT:
+                        moveTo = currentPos.add(-1, 0, 0);
+                        break;
+                    default:
+                        moveTo = currentPos.add(0, 0, 0);
+                        break;
+                }
+                move(world, entity, state, moveTo);
                 break;
             case "east":
+                switch (direction) {
+                    case FORWARD:
+                        moveTo = currentPos.add(1, 0, 0);
+                        break;
+                    case BACK:
+                        moveTo = currentPos.add(-1, 0, 0);
+                        break;
+                    case UP:
+                        moveTo = currentPos.add(0, 1, 0);
+                        break;
+                    case DOWN:
+                        moveTo = currentPos.add(0, -1, 0);
+                        break;
+                    case LEFT:
+                        moveTo = currentPos.add(0, 0, -1);
+                        break;
+                    case RIGHT:
+                        moveTo = currentPos.add(0, 0, 1);
+                        break;
+                    default:
+                        moveTo = currentPos.add(0, 0, 0);
+                        break;
+                }
+                move(world, entity, state, moveTo);
                 break;
             case "west":
+                switch (direction) {
+                    case FORWARD:
+                        moveTo = currentPos.add(-1, 0, 0);
+                        break;
+                    case BACK:
+                        moveTo = currentPos.add(1, 0, 0);
+                        break;
+                    case UP:
+                        moveTo = currentPos.add(0, 1, 0);
+                        break;
+                    case DOWN:
+                        moveTo = currentPos.add(0, -1, 0);
+                        break;
+                    case LEFT:
+                        moveTo = currentPos.add(0, 0, 1);
+                        break;
+                    case RIGHT:
+                        moveTo = currentPos.add(0, 0, -1);
+                        break;
+                    default:
+                        moveTo = currentPos.add(0, 0, 0);
+                        break;
+                }
+                move(world, entity, state, moveTo);
                 break;
         }
     }
 
-    private void turn(World world, BotBlockEntity entity, BlockState state, String turn) {
+    // TODO: Figure out how to force GUI to close to prevent duping items.
+    private void move(World world, BotBlockEntity entity, BlockState state, BlockPos moveToPos) {
+        BlockPos currentPos = entity.getPos();
+
+        if (!world.isAir(moveToPos)) {
+            return;
+        }
+
+        world.setBlockState(moveToPos, state);
+
+        BotBlockEntity newEntity = (BotBlockEntity) world.getBlockEntity(moveToPos);
+        NbtCompound nbt = new NbtCompound();
+        entity.writeNbt(nbt);
+        newEntity.readNbt(nbt);
+        newEntity.bookLineIndex = bookLineIndex;
+
+        world.removeBlockEntity(currentPos);
+        world.removeBlock(currentPos, true);
+    }
+
+    private void turn(World world, BotBlockEntity entity, BlockState state, TurnDirections turn) {
         switch (state.get(BotBlock.FACING).toString()) {
             case "north":
-                if (turn.equals("left")) {
-                    world.setBlockState(entity.pos, state.rotate(BlockRotation.COUNTERCLOCKWISE_90));
-                    world.updateListeners(entity.pos, state, state.rotate(BlockRotation.COUNTERCLOCKWISE_90), Block.NOTIFY_LISTENERS);
-                } else if (turn.equals("right")) {
-                    world.setBlockState(entity.pos, state.rotate(BlockRotation.CLOCKWISE_90));
-                    world.updateListeners(entity.pos, state, state.rotate(BlockRotation.CLOCKWISE_90), Block.NOTIFY_LISTENERS);
+                switch (turn) {
+                    case LEFT:
+                        world.removeBlock(entity.pos, true);
+                        world.setBlockState(entity.pos, state.rotate(BlockRotation.COUNTERCLOCKWISE_90));
+                    case RIGHT:
+                        world.removeBlock(entity.pos, true);
+                        world.setBlockState(entity.pos, state.rotate(BlockRotation.CLOCKWISE_90));
+                    case AROUND:
+                        world.removeBlock(entity.pos, true);
+                        world.setBlockState(entity.pos, state.rotate(BlockRotation.CLOCKWISE_180));
                 }
                 break;
             case "south":

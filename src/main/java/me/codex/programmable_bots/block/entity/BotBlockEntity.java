@@ -1,8 +1,12 @@
 package me.codex.programmable_bots.block.entity;
 
+import java.util.ArrayList;
+
 import org.jetbrains.annotations.Nullable;
 
+import me.codex.programmable_bots.block.BotBlock;
 import me.codex.programmable_bots.screen.BotBlockScreenHandler;
+import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -13,40 +17,29 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.screen.NamedScreenHandlerFactory;
-import net.minecraft.screen.PropertyDelegate;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.text.Text;
+import net.minecraft.util.BlockRotation;
 import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
 public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFactory, ImplementedInventory {
-    private final DefaultedList<ItemStack> inventory = DefaultedList.ofSize(22, ItemStack.EMPTY);
-
-    protected final PropertyDelegate delegate;
-    private int running = 0;
+    private DefaultedList<ItemStack> inventory = DefaultedList.ofSize(22, ItemStack.EMPTY);
+    private boolean executingBook = false;
+    private int bookLineIndex = -1;
 
     public BotBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.BOT, pos, state);
-
-        this.delegate = new PropertyDelegate() {
-            public int get(int index) {
-                return BotBlockEntity.this.running;
-            }
-
-            public void set(int index, int value) {
-                BotBlockEntity.this.running = value;
-            }
-
-            public int size() {
-                return 21;
-            }
-        };
     }
 
     @Override
     public DefaultedList<ItemStack> getItems() {
         return this.inventory;
+    }
+
+    public void setItems(DefaultedList<ItemStack> inventory) {
+        this.inventory = inventory;
     }
 
     @Override
@@ -57,7 +50,7 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
     @Nullable
     @Override
     public ScreenHandler createMenu(int syncId, PlayerInventory inventory, PlayerEntity player) {
-        return new BotBlockScreenHandler(syncId, inventory, this, this.delegate);
+        return new BotBlockScreenHandler(syncId, inventory, this);
     }
 
     @Override
@@ -77,21 +70,23 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
         return !stack.isEmpty();
     }
 
-    // Next update thing.
-    private static String fromList(NbtElement nbt) {
-        String output = "";
+    private static ArrayList<String> toLines(NbtElement nbt) {
+        ArrayList<String> output = new ArrayList<>();
         if (nbt.getType() == 9) {
             NbtList list = (NbtList) nbt;
 
             for (int i = 0; i < list.size(); i++) {
-                output += list.get(i).toString().replace("\"", "").replace("'", "");
-                if (i < list.size() - 1) {
-                    output += "\n";
+                String[] page = list.get(i).toString().replace("\"", "").replace("'", "").split("\n");
+
+                for (String line : page) {
+                    if (!line.isEmpty()) {
+                        output.add(line);
+                    }
                 }
             }
             return output;
         }
-        return "";
+        return new ArrayList<>();
     }
 
     // Runs every tick
@@ -99,16 +94,126 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
         if (world.isClient) {
             return;
         }
-        world.getServer().sendMessage(Text.literal("Hello from server"));
 
-        // // Next update thing.
-        if (entity.hasBook()) {
+        if (entity.hasBook() && !entity.executingBook) {
+            entity.executingBook = true;
             ItemStack stack = entity.getStack(0);
             NbtElement pages = stack.getNbt().get("pages");
-            String content = fromList(pages);
-            for (PlayerEntity player : world.getPlayers()) {
-                player.sendMessage(Text.literal(content), true);
+            ArrayList<String> content = toLines(pages);
+
+            if (entity.bookLineIndex < content.size()) {
+                int i = entity.bookLineIndex++;
+                String line = content.get(i);
+
+                switch (line) {
+                    case "forward":
+                        world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
+                        entity.movingBot(world, entity, state, MoveDirections.FORWARD, entity.bookLineIndex);
+                        break;
+                    case "back":
+                        world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
+                        entity.movingBot(world, entity, state, MoveDirections.BACK, entity.bookLineIndex);
+                        break;
+                    case "up":
+                        world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
+                        entity.movingBot(world, entity, state, MoveDirections.UP, entity.bookLineIndex);
+                        break;
+                    case "down":
+                        world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
+                        entity.movingBot(world, entity, state, MoveDirections.DOWN, entity.bookLineIndex);
+                        break;
+                    case "left":
+                        world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
+                        entity.movingBot(world, entity, state, MoveDirections.LEFT, entity.bookLineIndex);
+                        break;
+                    case "right":
+                        world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
+                        entity.movingBot(world, entity, state, MoveDirections.RIGHT, entity.bookLineIndex);
+                        break;
+                    default:
+                        break;
+                }
             }
+        } else if (!entity.hasBook()) {
+            entity.executingBook = false;
+            entity.bookLineIndex = 0;
+        }
+    }
+
+/*
+ *  North = -Z
+ *  South = +Z
+ *  East = +X
+ *  West = -X
+ */
+
+    private void movingBot(World world, BotBlockEntity entity, BlockState state, MoveDirections direction, int bookLineIndex) {
+        BlockPos currentPos = entity.getPos();
+        switch (state.get(BotBlock.FACING).toString()) {
+            case "north":
+                BlockPos moveTo;
+                switch (direction) {
+                    case FORWARD:
+                        moveTo = currentPos.add(0, 0, -1);
+                        break;
+                    case BACK:
+                        moveTo = currentPos.add(0, 0, 1);
+                        break;
+                    case UP:
+                        moveTo = currentPos.add(0, 1, 0);
+                        break;
+                    case DOWN:
+                        moveTo = currentPos.add(0, -1, 0);
+                        break;
+                    case LEFT:
+                        moveTo = currentPos.add(1, 0, 0);
+                        break;
+                    default:
+                        moveTo = currentPos.add(-1, 0, 0);
+                        break;
+                }
+
+                if (!world.isAir(moveTo)) {
+                    return;
+                }
+
+                world.setBlockState(moveTo, state);
+
+                BotBlockEntity newEntity = (BotBlockEntity) world.getBlockEntity(moveTo);
+                NbtCompound nbt = new NbtCompound();
+                entity.writeNbt(nbt);
+                newEntity.readNbt(nbt);
+                newEntity.bookLineIndex = bookLineIndex;
+
+                world.removeBlockEntity(currentPos);
+                world.removeBlock(currentPos, true);
+                break;
+            case "south":
+                break;
+            case "east":
+                break;
+            case "west":
+                break;
+        }
+    }
+
+    private void turn(World world, BotBlockEntity entity, BlockState state, String turn) {
+        switch (state.get(BotBlock.FACING).toString()) {
+            case "north":
+                if (turn.equals("left")) {
+                    world.setBlockState(entity.pos, state.rotate(BlockRotation.COUNTERCLOCKWISE_90));
+                    world.updateListeners(entity.pos, state, state.rotate(BlockRotation.COUNTERCLOCKWISE_90), Block.NOTIFY_LISTENERS);
+                } else if (turn.equals("right")) {
+                    world.setBlockState(entity.pos, state.rotate(BlockRotation.CLOCKWISE_90));
+                    world.updateListeners(entity.pos, state, state.rotate(BlockRotation.CLOCKWISE_90), Block.NOTIFY_LISTENERS);
+                }
+                break;
+            case "south":
+                break;
+            case "east":
+                break;
+            case "west":
+                break;
         }
     }
 }

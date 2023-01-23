@@ -6,8 +6,6 @@ import net.minecraft.inventory.Inventory;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
-import net.minecraft.screen.ArrayPropertyDelegate;
-import net.minecraft.screen.PropertyDelegate;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.slot.Slot;
 
@@ -15,10 +13,10 @@ public class BotBlockScreenHandler extends ScreenHandler {
     private final Inventory inventory;
 
     public BotBlockScreenHandler(int syncId, PlayerInventory playerInventory) {
-        this(syncId, playerInventory, new SimpleInventory(22), new ArrayPropertyDelegate(0));
+        this(syncId, playerInventory, new SimpleInventory(22));
     }
 
-    public BotBlockScreenHandler(int syncId, PlayerInventory playerInventory, Inventory inventory, PropertyDelegate delegate) {
+    public BotBlockScreenHandler(int syncId, PlayerInventory playerInventory, Inventory inventory) {
         super(ModScreenHandlers.BOT_SCREEN_HANDLER, syncId);
         checkSize(inventory, 22);
         this.inventory = inventory;
@@ -28,8 +26,6 @@ public class BotBlockScreenHandler extends ScreenHandler {
 
         addPlayerInventory(playerInventory);
         addPlayerHotbar(playerInventory);
-
-        addProperties(delegate);
     }
 
     @Override
@@ -73,8 +69,8 @@ public class BotBlockScreenHandler extends ScreenHandler {
         });
 
         int index = 1;
-        for (int r = 0; r < 7; r++) {
-            for (int c = 0; c < 3; c++) {
+        for (int c = 0; c < 3; c++) {
+            for (int r = 0; r < 7; r++) {
                 this.addSlot(new Slot(inventory, index, 44 + r * 18, 16 + c * 18));
                 index++;
             }

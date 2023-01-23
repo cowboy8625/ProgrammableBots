@@ -147,13 +147,6 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
         }
     }
 
-/*
- *  North = -Z
- *  South = +Z
- *  East = +X
- *  West = -X
- */
-
     private void moveBot(World world, BotBlockEntity entity, BlockState state, MoveDirections direction) {
         BlockPos currentPos = entity.getPos();
         BlockPos moveTo;

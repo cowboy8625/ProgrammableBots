@@ -6,7 +6,6 @@ import org.jetbrains.annotations.Nullable;
 
 import me.codex.programmable_bots.block.BotBlock;
 import me.codex.programmable_bots.screen.BotBlockScreenHandler;
-import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -19,15 +18,17 @@ import net.minecraft.nbt.NbtList;
 import net.minecraft.screen.NamedScreenHandlerFactory;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.text.Text;
-import net.minecraft.util.BlockRotation;
 import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Direction.Axis;
+import net.minecraft.util.math.Direction.AxisDirection;
 import net.minecraft.world.World;
 
 public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFactory, ImplementedInventory {
     private DefaultedList<ItemStack> inventory = DefaultedList.ofSize(22, ItemStack.EMPTY);
     private boolean executingBook = false;
-    private int bookLineIndex = -1;
+    private int bookLineIndex = 0;
 
     public BotBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.BOT, pos, state);
@@ -108,27 +109,27 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
                 switch (line) {
                     case "forward":
                         world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
-                        entity.moveBot(world, entity, state, MoveDirections.FORWARD, entity.bookLineIndex);
+                        entity.moveBot(world, entity, state, MoveDirections.FORWARD);
                         break;
                     case "back":
                         world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
-                        entity.moveBot(world, entity, state, MoveDirections.BACK, entity.bookLineIndex);
+                        entity.moveBot(world, entity, state, MoveDirections.BACK);
                         break;
                     case "up":
                         world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
-                        entity.moveBot(world, entity, state, MoveDirections.UP, entity.bookLineIndex);
+                        entity.moveBot(world, entity, state, MoveDirections.UP);
                         break;
                     case "down":
                         world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
-                        entity.moveBot(world, entity, state, MoveDirections.DOWN, entity.bookLineIndex);
+                        entity.moveBot(world, entity, state, MoveDirections.DOWN);
                         break;
                     case "left":
                         world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
-                        entity.moveBot(world, entity, state, MoveDirections.LEFT, entity.bookLineIndex);
+                        entity.moveBot(world, entity, state, MoveDirections.LEFT);
                         break;
                     case "right":
                         world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
-                        entity.moveBot(world, entity, state, MoveDirections.RIGHT, entity.bookLineIndex);
+                        entity.moveBot(world, entity, state, MoveDirections.RIGHT);
                         break;
                     case "turn left":
                         world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
@@ -136,15 +137,17 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
                         break;
                     case "turn right":
                         world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
+                        entity.turn(world, entity, state, TurnDirections.RIGHT);
                         break;
                     case "turn around":
                         world.getServer().sendMessage(Text.literal("Line "+i+" = "+line));
+                        entity.turn(world, entity, state, TurnDirections.AROUND);
                         break;
                     default:
                         break;
                 }
             }
-        } else if (!entity.hasBook()) {
+        } else if (!entity.hasBook() && entity.executingBook && entity.bookLineIndex > 0) {
             entity.executingBook = false;
             entity.bookLineIndex = 0;
         }
@@ -157,7 +160,7 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
  *  West = -X
  */
 
-    private void moveBot(World world, BotBlockEntity entity, BlockState state, MoveDirections direction, int bookLineIndex) {
+    private void moveBot(World world, BotBlockEntity entity, BlockState state, MoveDirections direction) {
         BlockPos currentPos = entity.getPos();
         BlockPos moveTo;
         switch (state.get(BotBlock.FACING).toString()) {
@@ -282,7 +285,7 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
         NbtCompound nbt = new NbtCompound();
         entity.writeNbt(nbt);
         newEntity.readNbt(nbt);
-        newEntity.bookLineIndex = bookLineIndex;
+        newEntity.bookLineIndex = entity.bookLineIndex;
 
         world.removeBlockEntity(currentPos);
         world.removeBlock(currentPos, true);
@@ -293,21 +296,58 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
             case "north":
                 switch (turn) {
                     case LEFT:
-                        world.removeBlock(entity.pos, true);
-                        world.setBlockState(entity.pos, state.rotate(BlockRotation.COUNTERCLOCKWISE_90));
+                        world.setBlockState(entity.pos, state.with(BotBlock.FACING, Direction.get(AxisDirection.NEGATIVE, Axis.X)));
+                        break;
                     case RIGHT:
-                        world.removeBlock(entity.pos, true);
-                        world.setBlockState(entity.pos, state.rotate(BlockRotation.CLOCKWISE_90));
+                        world.setBlockState(entity.pos, state.with(BotBlock.FACING, Direction.get(AxisDirection.POSITIVE, Axis.X)));
+                        break;
                     case AROUND:
-                        world.removeBlock(entity.pos, true);
-                        world.setBlockState(entity.pos, state.rotate(BlockRotation.CLOCKWISE_180));
+                        world.setBlockState(entity.pos, state.with(BotBlock.FACING, Direction.get(AxisDirection.POSITIVE, Axis.Z)));
+                        break;
                 }
+                world.getServer().sendMessage(Text.literal("Is Executing: "+((BotBlockEntity) world.getBlockEntity(entity.pos)).executingBook));
                 break;
             case "south":
+                switch (turn) {
+                    case LEFT:
+                        world.setBlockState(entity.pos, state.with(BotBlock.FACING, Direction.get(AxisDirection.POSITIVE, Axis.X)));
+                        break;
+                    case RIGHT:
+                        world.setBlockState(entity.pos, state.with(BotBlock.FACING, Direction.get(AxisDirection.NEGATIVE, Axis.X)));
+                        break;
+                    case AROUND:
+                        world.setBlockState(entity.pos, state.with(BotBlock.FACING, Direction.get(AxisDirection.NEGATIVE, Axis.Z)));
+                        break;
+                }
+                world.getServer().sendMessage(Text.literal("Is Executing: "+((BotBlockEntity) world.getBlockEntity(entity.pos)).executingBook));
                 break;
             case "east":
+                switch (turn) {
+                    case LEFT:
+                        world.setBlockState(entity.pos, state.with(BotBlock.FACING, Direction.get(AxisDirection.NEGATIVE, Axis.Z)));
+                        break;
+                    case RIGHT:
+                        world.setBlockState(entity.pos, state.with(BotBlock.FACING, Direction.get(AxisDirection.POSITIVE, Axis.Z)));
+                        break;
+                    case AROUND:
+                        world.setBlockState(entity.pos, state.with(BotBlock.FACING, Direction.get(AxisDirection.NEGATIVE, Axis.X)));
+                        break;
+                }
+                world.getServer().sendMessage(Text.literal("Is Executing: "+((BotBlockEntity) world.getBlockEntity(entity.pos)).executingBook));
                 break;
             case "west":
+                switch (turn) {
+                    case LEFT:
+                        world.setBlockState(entity.pos, state.with(BotBlock.FACING, Direction.get(AxisDirection.POSITIVE, Axis.Z)));
+                        break;
+                    case RIGHT:
+                        world.setBlockState(entity.pos, state.with(BotBlock.FACING, Direction.get(AxisDirection.NEGATIVE, Axis.Z)));
+                        break;
+                    case AROUND:
+                        world.setBlockState(entity.pos, state.with(BotBlock.FACING, Direction.get(AxisDirection.POSITIVE, Axis.X)));
+                        break;
+                }
+                world.getServer().sendMessage(Text.literal("Is Executing: "+((BotBlockEntity) world.getBlockEntity(entity.pos)).executingBook));
                 break;
         }
     }

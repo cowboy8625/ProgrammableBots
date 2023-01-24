@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import org.jetbrains.annotations.Nullable;
 
 import me.codex.programmable_bots.block.BotBlock;
+import me.codex.programmable_bots.gamerules.ModGamerules;
 import me.codex.programmable_bots.screen.BotBlockScreenHandler;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
@@ -30,7 +31,7 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
     private boolean executingBook = false;
     private int bookLineIndex = 0;
     private long lastRan = 0;
-    private long DELAY = 10;
+    private long executionDelay = -1;
 
     public BotBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.BOT, pos, state);
@@ -101,9 +102,14 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
             return;
         }
 
-        var canRunCode = entity.hasBook() && !entity.executingBook && world.getTime() > entity.lastRan;
+        if (entity.executionDelay < 0) {
+            entity.executionDelay = 0;
+        }
+        entity.executionDelay = world.getGameRules().getInt(ModGamerules.BOT_EXECUTION_DELAY);
+
+        boolean canRunCode = entity.hasBook() && !entity.executingBook && world.getTime() > entity.lastRan;
         if (canRunCode) {
-            entity.lastRan = world.getTime() + entity.DELAY;
+            entity.lastRan = world.getTime() + entity.executionDelay;
             entity.executingBook = true;
             ItemStack stack = entity.getStack(0);
             NbtElement pages = stack.getNbt().get("pages");

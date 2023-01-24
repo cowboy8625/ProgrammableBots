@@ -77,7 +77,7 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
             NbtList list = (NbtList) nbt;
 
             for (int i = 0; i < list.size(); i++) {
-                String listAsStr = list.toString();
+                String listAsStr = list.get(i).toString();
                 listAsStr = listAsStr.replace("\"", "");
                 listAsStr = listAsStr.replace("'", "");
                 String[] page = listAsStr.split("\n");

@@ -102,10 +102,9 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
             return;
         }
 
-        if (entity.executionDelay < 0) {
-            entity.executionDelay = 0;
+        if (world.getGameRules().getInt(ModGamerules.BOT_EXECUTION_DELAY) != entity.executionDelay) {
+            entity.executionDelay = world.getGameRules().getInt(ModGamerules.BOT_EXECUTION_DELAY);
         }
-        entity.executionDelay = world.getGameRules().getInt(ModGamerules.BOT_EXECUTION_DELAY);
 
         boolean canRunCode = entity.hasBook() && !entity.executingBook && world.getTime() > entity.lastRan;
         if (canRunCode) {

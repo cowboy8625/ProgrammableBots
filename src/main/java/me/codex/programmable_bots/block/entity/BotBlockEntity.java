@@ -29,6 +29,8 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
     private DefaultedList<ItemStack> inventory = DefaultedList.ofSize(22, ItemStack.EMPTY);
     private boolean executingBook = false;
     private int bookLineIndex = 0;
+    private long lastRan = 0;
+    private long DELAY = 10;
 
     public BotBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.BOT, pos, state);
@@ -99,7 +101,9 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
             return;
         }
 
-        if (entity.hasBook() && !entity.executingBook) {
+        var canRunCode = entity.hasBook() && !entity.executingBook && world.getTime() > entity.lastRan;
+        if (canRunCode) {
+            entity.lastRan = world.getTime() + entity.DELAY;
             entity.executingBook = true;
             ItemStack stack = entity.getStack(0);
             NbtElement pages = stack.getNbt().get("pages");
@@ -273,6 +277,7 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
         entity.writeNbt(nbt);
         newEntity.readNbt(nbt);
         newEntity.bookLineIndex = entity.bookLineIndex;
+        newEntity.lastRan = entity.lastRan;
 
         world.removeBlockEntity(currentPos);
         world.removeBlock(currentPos, true);

@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 
 import me.codex.programmable_bots.block.ModBlocks;
 import me.codex.programmable_bots.block.entity.ModBlockEntities;
+import me.codex.programmable_bots.gamerules.ModGamerules;
 import me.codex.programmable_bots.item.ModItemGroup;
 import me.codex.programmable_bots.screen.ModScreenHandlers;
 
@@ -20,6 +21,9 @@ public class ProgrammableBots implements ModInitializer {
 
         // Blocks and Items
         ModBlocks.registerModBlocks();
+
+        // Gamerules
+        ModGamerules.registerModGamerules();
 
         // Other
         ModBlockEntities.registerBlockEntities();

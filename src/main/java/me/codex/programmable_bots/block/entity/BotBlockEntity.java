@@ -90,6 +90,15 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
             return line;
         }).toList()));
     }
+    
+    private static void botDebugPrint(boolean canPrint, World world, ArrayList<Token> tokens){
+        if (!canPrint) {
+            return;
+        }
+        for (PlayerEntity player : world.getPlayers()) {
+            player.sendMessage(Text.literal(tokens.toString()));
+        }
+    }
 
     // Runs every tick
     public static void tick(World world, BlockPos pos, BlockState state, BotBlockEntity entity) {
@@ -112,9 +121,8 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
             ArrayList<Token> tokens = new Lexer(content.get()).lex();
 
             if (entity.bookLineIndex < tokens.size()) {
-                // for (PlayerEntity player : world.getPlayers()) {
-                //     player.sendMessage(Text.literal(tokens.toString()));
-                // }
+                boolean botDebug = world.getGameRules().getBoolean(ModGamerules.BOT_DEBUG_OUTPUT);
+                botDebugPrint(botDebug, world, tokens);
                 entity.runCommand(world, pos, state, entity, tokens);
             }
         } else if (!entity.hasBook() && entity.executingBook && entity.bookLineIndex > 0) {

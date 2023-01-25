@@ -1,9 +1,12 @@
 package me.codex.programmable_bots.block.entity;
 
 import java.util.ArrayList;
+import java.util.Optional;
 
 import org.jetbrains.annotations.Nullable;
 
+import me.codex.language.lexer.Lexer;
+import me.codex.language.token.Token;
 import me.codex.programmable_bots.block.BotBlock;
 import me.codex.programmable_bots.gamerules.ModGamerules;
 import me.codex.programmable_bots.screen.BotBlockScreenHandler;
@@ -74,26 +77,18 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
         return !stack.isEmpty();
     }
 
-    private static ArrayList<String> toLines(NbtElement nbt) {
-        ArrayList<String> output = new ArrayList<>();
-        if (nbt.getType() == 9) {
-            NbtList list = (NbtList) nbt;
-
-            for (int i = 0; i < list.size(); i++) {
-                String listAsStr = list.get(i).toString();
-                listAsStr = listAsStr.replace("\"", "");
-                listAsStr = listAsStr.replace("'", "");
-                String[] page = listAsStr.split("\n");
-
-                for (String line : page) {
-                    if (!line.isEmpty()) {
-                        output.add(line);
-                    }
-                }
-            }
-            return output;
+    private static Optional<String> maybeString(NbtElement nbt) {
+        if (nbt.getType() != NbtElement.LIST_TYPE) {
+            return Optional.empty();
         }
-        return new ArrayList<>();
+        NbtList list = (NbtList) nbt;
+
+        return Optional.of(String.join("\n", list.stream().map(i -> {
+            String line = i.toString();
+            line = line.replace("\"", "");
+            line = line.replace("'", "");
+            return line;
+        }).toList()));
     }
 
     // Runs every tick
@@ -111,48 +106,56 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
             entity.lastRan = world.getTime() + entity.executionDelay;
             entity.executingBook = true;
             ItemStack stack = entity.getStack(0);
-            NbtElement pages = stack.getNbt().get("pages");
-            ArrayList<String> content = toLines(pages);
+           NbtElement pages = stack.getNbt().get("pages");
+            Optional<String> content = maybeString(pages);
+            if (content.isEmpty()) return;
+            ArrayList<Token> tokens = new Lexer(content.get()).lex();
 
-            if (entity.bookLineIndex < content.size()) {
-                int i = entity.bookLineIndex++;
-                String line = content.get(i);
-
-                switch (line) {
-                    case "forward":
-                        entity.moveBot(world, entity, state, MoveDirections.FORWARD);
-                        break;
-                    case "back":
-                        entity.moveBot(world, entity, state, MoveDirections.BACK);
-                        break;
-                    case "up":
-                        entity.moveBot(world, entity, state, MoveDirections.UP);
-                        break;
-                    case "down":
-                        entity.moveBot(world, entity, state, MoveDirections.DOWN);
-                        break;
-                    case "left":
-                        entity.moveBot(world, entity, state, MoveDirections.LEFT);
-                        break;
-                    case "right":
-                        entity.moveBot(world, entity, state, MoveDirections.RIGHT);
-                        break;
-                    case "turn left":
-                        entity.turn(world, entity, state, TurnDirections.LEFT);
-                        break;
-                    case "turn right":
-                        entity.turn(world, entity, state, TurnDirections.RIGHT);
-                        break;
-                    case "turn around":
-                        entity.turn(world, entity, state, TurnDirections.AROUND);
-                        break;
-                    default:
-                        break;
-                }
+            if (entity.bookLineIndex < tokens.size()) {
+                // for (PlayerEntity player : world.getPlayers()) {
+                //     player.sendMessage(Text.literal(tokens.toString()));
+                // }
+                entity.runCommand(world, pos, state, entity, tokens);
             }
         } else if (!entity.hasBook() && entity.executingBook && entity.bookLineIndex > 0) {
             entity.executingBook = false;
             entity.bookLineIndex = 0;
+        }
+    }
+    private void runCommand(World world, BlockPos pos, BlockState state, BotBlockEntity entity, ArrayList<Token> tokens) {
+        int i = entity.bookLineIndex++;
+        Token token = tokens.get(i);
+
+        switch (token.value()) {
+            case "forward":
+                entity.moveBot(world, entity, state, MoveDirections.FORWARD);
+                break;
+            case "back":
+                entity.moveBot(world, entity, state, MoveDirections.BACK);
+                break;
+            case "up":
+                entity.moveBot(world, entity, state, MoveDirections.UP);
+                break;
+            case "down":
+                entity.moveBot(world, entity, state, MoveDirections.DOWN);
+                break;
+            case "left":
+                entity.moveBot(world, entity, state, MoveDirections.LEFT);
+                break;
+            case "right":
+                entity.moveBot(world, entity, state, MoveDirections.RIGHT);
+                break;
+            case "turn left":
+                entity.turn(world, entity, state, TurnDirections.LEFT);
+                break;
+            case "turn right":
+                entity.turn(world, entity, state, TurnDirections.RIGHT);
+                break;
+            case "turn around":
+                entity.turn(world, entity, state, TurnDirections.AROUND);
+                break;
+            default:
+                break;
         }
     }
 

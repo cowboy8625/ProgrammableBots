@@ -11,6 +11,10 @@ public class ModGamerules {
         Category.UPDATES,
         GameRuleFactory.createIntRule(8, 0));
 
+    public static final GameRules.Key<GameRules.BooleanRule> BOT_DEBUG_OUTPUT= GameRuleRegistry.register("botDebugOutput",
+        Category.UPDATES,
+        GameRuleFactory.createBooleanRule(false));
+
     public static void registerModGamerules() {
         ProgrammableBots.LOGGER.debug("Registering mod gamerules for "+ProgrammableBots.MODID);
     }

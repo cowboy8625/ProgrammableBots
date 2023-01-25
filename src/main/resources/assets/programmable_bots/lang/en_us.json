@@ -1,5 +1,7 @@
 {
     "block.programmable_bots.bot": "Bot",
 
-    "itemGroup.programmable_bots.tab": "Programmable Bots"
+    "itemGroup.programmable_bots.tab": "Programmable Bots",
+
+    "gamerule.botExecutionDelay": "Execution delay of bots from the Programmable Bots Mod"
 }

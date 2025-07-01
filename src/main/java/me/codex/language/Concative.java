@@ -36,10 +36,16 @@ public class Concative {
     }
 
     public Integer peekStack() {
+        if (stack.isEmpty()) {
+            return null;
+        }
         return stack.peek();
     }
 
     public Integer popStack() {
+        if (stack.isEmpty()) {
+            return null;
+        }
         return stack.pop();
     }
 

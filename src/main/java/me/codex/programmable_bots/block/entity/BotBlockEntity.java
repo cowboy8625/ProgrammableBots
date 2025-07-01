@@ -14,6 +14,7 @@ import me.codex.either.Either;
 import me.codex.language.parser.Parser;
 import me.codex.language.token.Token;
 import me.codex.programmable_bots.block.BotBlock;
+import me.codex.programmable_bots.block.entity.BotCommand;
 import me.codex.programmable_bots.gamerules.ModGamerules;
 import me.codex.programmable_bots.screen.BotBlockScreenHandler;
 import net.minecraft.block.BlockState;
@@ -41,38 +42,59 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
     private long lastRan = 0;
     private long executionDelay = -1;
     private Concative concative = new Concative();
-    private Deque<MoveDirections> queue = new ArrayDeque<>();
+    private Deque<BotCommand> queue = new ArrayDeque<>();
     private List<String> lines = new ArrayList<>();
+    private boolean isDirty = false;
 
     public BotBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.BOT, pos, state);
+        initConcative();
+    }
 
-        concative.registerBuiltin("print", () -> {
-            boolean canPrint = world.getGameRules().getBoolean(ModGamerules.BOT_DEBUG_OUTPUT);
-            int value = this.concative.popStack();
-        });
+    private void initConcative() {
+        var directions = new ArrayList<MoveDirections>(){{
+            add(MoveDirections.FORWARD);
+            add(MoveDirections.BACK);
+            add(MoveDirections.UP);
+            add(MoveDirections.DOWN);
+            add(MoveDirections.LEFT);
+            add(MoveDirections.RIGHT);
+        }};
 
-        concative.registerBuiltin("backward", () -> {
-            Integer value = this.concative.popStack();
-            if (value == null || value == 1) {
-                this.queue.addLast(MoveDirections.BACK);
-                return;
-            }
-            for (int i = 0; i < value; i++) {
-                this.queue.addLast(MoveDirections.BACK);
-            }
-        });
+        var directionSize = directions.size();
+        for (int i = 0; i < directionSize; i++) {
+            BotCommand direction = directions.get(i);
+            concative.registerBuiltin(direction.toString(), () -> {
+                Integer value = this.concative.popStack();
+                if (value == null || value == 1) {
+                    this.queue.addLast(direction);
+                    return;
+                }
+                for (int j = 0; j < value; j++) {
+                    this.queue.addLast(direction);
+                }
+            });
+        }
 
-        concative.registerBuiltin("forward", () -> {
-            Integer value = this.concative.popStack();
-            if (value == null || value == 1) {
-                this.queue.addLast(MoveDirections.FORWARD);
-                return;
-            }
-            for (int i = 0; i < value; i++) {
-                this.queue.addLast(MoveDirections.FORWARD);
-            }
-        });
+        var turnDirections = new ArrayList<TurnDirections>(){{
+            add(TurnDirections.RIGHT);
+            add(TurnDirections.LEFT);
+            add(TurnDirections.AROUND);
+        }};
+        var turnDirectionsSize = turnDirections.size();
+        for (int i = 0; i < turnDirectionsSize; i++) {
+            BotCommand turnDirection = turnDirections.get(i);
+            concative.registerBuiltin(turnDirection.toString(), () -> {
+                Integer value = this.concative.popStack();
+                if (value == null || value == 1) {
+                    this.queue.addLast(turnDirection);
+                    return;
+                }
+                for (int j = 0; j < value; j++) {
+                    this.queue.addLast(turnDirection);
+                }
+            });
+        }
     }
 
     @Override
@@ -182,6 +204,7 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
         } else if (canRunCode && entity.lines.isEmpty()) {
             // LOAD CODE
             entity.lastRan = world.getTime() + entity.executionDelay;
+            entity.isDirty = true;
 
             ItemStack stack = entity.getStack(0);
             NbtElement pages = stack.getNbt().get("pages");
@@ -191,15 +214,23 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
             // RUN QUEUE COMMAND
             entity.lastRan = world.getTime() + entity.executionDelay;
 
-            var dir = entity.queue.pollFirst();
-            moveBot(world, entity, state, dir);
-        } else if (!entity.hasBook() && entity.bookLineIndex > 0) {
+            var command = entity.queue.pollFirst();
+            command.execute(world, state, entity);
+        } else if (!entity.hasBook() && entity.isDirty) {
             // END
-            entity.bookLineIndex = 0;
+            entity.reset();
         }
     }
 
-    private static void moveBot(World world, BotBlockEntity entity, BlockState state, MoveDirections direction) {
+    private void reset() {
+        this.initConcative();
+        this.bookLineIndex = 0;
+        this.lastRan = 0;
+        this.queue = new ArrayDeque<>();
+        this.lines = new ArrayList<>();
+    }
+
+    public static void moveBot(World world, BotBlockEntity entity, BlockState state, MoveDirections direction) {
         BlockPos currentPos = entity.getPos();
         BlockPos moveTo = currentPos;
 
@@ -256,12 +287,13 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
         newEntity.queue = entity.queue;
         newEntity.lines = entity.lines;
         newEntity.concative = entity.concative;
+        newEntity.isDirty = entity.isDirty;
 
         world.removeBlockEntity(currentPos);
         world.removeBlock(currentPos, true);
     }
 
-    private void turn(World world, BotBlockEntity entity, BlockState state, TurnDirections turn) {
+    public void turn(World world, BotBlockEntity entity, BlockState state, TurnDirections turn) {
         switch (state.get(BotBlock.FACING).toString()) {
             case "north":
                 switch (turn) {

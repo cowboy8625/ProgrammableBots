@@ -1,11 +1,17 @@
 package me.codex.programmable_bots.block.entity;
 
+
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.ArrayDeque;
+import java.util.Deque;
 
-import org.jetbrains.annotations.Nullable;
-
+import me.codex.language.Concative;
+import me.codex.language.interpreter.Interpreter;
 import me.codex.language.lexer.Lexer;
+import me.codex.either.Either;
+import me.codex.language.parser.Parser;
 import me.codex.language.token.Token;
 import me.codex.programmable_bots.block.BotBlock;
 import me.codex.programmable_bots.gamerules.ModGamerules;
@@ -31,13 +37,42 @@ import net.minecraft.world.World;
 
 public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFactory, ImplementedInventory {
     private DefaultedList<ItemStack> inventory = DefaultedList.ofSize(22, ItemStack.EMPTY);
-    private boolean executingBook = false;
     private int bookLineIndex = 0;
     private long lastRan = 0;
     private long executionDelay = -1;
+    private Concative concative = new Concative();
+    private Deque<MoveDirections> queue = new ArrayDeque<>();
+    private List<String> lines = new ArrayList<>();
 
     public BotBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.BOT, pos, state);
+
+        concative.registerBuiltin("print", () -> {
+            boolean canPrint = world.getGameRules().getBoolean(ModGamerules.BOT_DEBUG_OUTPUT);
+            int value = this.concative.popStack();
+        });
+
+        concative.registerBuiltin("backward", () -> {
+            Integer value = this.concative.popStack();
+            if (value == null || value == 1) {
+                this.queue.addLast(MoveDirections.BACK);
+                return;
+            }
+            for (int i = 0; i < value; i++) {
+                this.queue.addLast(MoveDirections.BACK);
+            }
+        });
+
+        concative.registerBuiltin("forward", () -> {
+            Integer value = this.concative.popStack();
+            if (value == null || value == 1) {
+                this.queue.addLast(MoveDirections.FORWARD);
+                return;
+            }
+            for (int i = 0; i < value; i++) {
+                this.queue.addLast(MoveDirections.FORWARD);
+            }
+        });
     }
 
     @Override
@@ -54,7 +89,6 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
         return Text.literal("Bot");
     }
 
-    @Nullable
     @Override
     public ScreenHandler createMenu(int syncId, PlayerInventory inventory, PlayerEntity player) {
         return new BotBlockScreenHandler(syncId, inventory, this);
@@ -77,30 +111,59 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
         return !stack.isEmpty();
     }
 
-    private static Optional<String> maybeString(NbtElement nbt) {
+    private static List<String> bookIntoString(NbtElement nbt) {
         if (nbt.getType() != NbtElement.LIST_TYPE) {
-            return Optional.empty();
+            return new ArrayList<String>();
         }
         NbtList list = (NbtList) nbt;
 
-        return Optional.of(String.join("\n", list.stream().map(i -> {
+        List<String> pages = list.stream().map(i -> {
             String line = i.toString();
             line = line.replace("\"", "");
             line = line.replace("'", "");
             return line;
-        }).toList()));
+        }).toList();
+        List<String> result = new ArrayList<>();
+        for (String page : pages) {
+            var lines = page.split("\n");
+            for (String line : lines) {
+                result.add(line);
+            }
+        }
+        return result;
     }
-    
-    private static void botDebugPrint(boolean canPrint, World world, ArrayList<Token> tokens){
+
+    private static void botDebugPrint(boolean canPrint, World world, Object object){
         if (!canPrint) {
             return;
         }
         for (PlayerEntity player : world.getPlayers()) {
-            player.sendMessage(Text.literal(tokens.toString()));
+            if (object != null) {
+                player.sendMessage(Text.literal(object.toString()));
+            } else {
+                player.sendMessage(Text.literal("NULL"));
+            }
+
         }
     }
 
-    // Runs every tick
+    private boolean canRunCode() {
+        return this.queue.isEmpty() && !this.lines.isEmpty() && this.bookLineIndex < this.lines.size();
+    }
+
+    private void executeCode() {
+        String line = this.lines.get(this.bookLineIndex);
+        this.bookLineIndex++;
+        try {
+            this.concative.interpret(line);
+        } catch(Exception e) {
+            botDebugPrint(world.getGameRules().getBoolean(ModGamerules.BOT_DEBUG_OUTPUT), world, line);
+            botDebugPrint(world.getGameRules().getBoolean(ModGamerules.BOT_DEBUG_OUTPUT), world, e.getMessage());
+            botDebugPrint(world.getGameRules().getBoolean(ModGamerules.BOT_DEBUG_OUTPUT), world, e.getStackTrace());
+            botDebugPrint(world.getGameRules().getBoolean(ModGamerules.BOT_DEBUG_OUTPUT), world, e);
+        }
+    }
+
     public static void tick(World world, BlockPos pos, BlockState state, BotBlockEntity entity) {
         if (world.isClient) {
             return;
@@ -110,176 +173,72 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
             entity.executionDelay = world.getGameRules().getInt(ModGamerules.BOT_EXECUTION_DELAY);
         }
 
-        boolean canRunCode = entity.hasBook() && !entity.executingBook && world.getTime() > entity.lastRan;
-        if (canRunCode) {
+        boolean canRunCode = entity.hasBook() && world.getTime() > entity.lastRan;
+        if (canRunCode && entity.canRunCode()) {
+            // RUN CODE
             entity.lastRan = world.getTime() + entity.executionDelay;
-            entity.executingBook = true;
-            ItemStack stack = entity.getStack(0);
-           NbtElement pages = stack.getNbt().get("pages");
-            Optional<String> content = maybeString(pages);
-            if (content.isEmpty()) return;
-            ArrayList<Token> tokens = new Lexer(content.get()).lex();
 
-            if (entity.bookLineIndex < tokens.size()) {
-                boolean botDebug = world.getGameRules().getBoolean(ModGamerules.BOT_DEBUG_OUTPUT);
-                botDebugPrint(botDebug, world, tokens);
-                entity.runCommand(world, pos, state, entity, tokens);
-            }
-        } else if (!entity.hasBook() && entity.executingBook && entity.bookLineIndex > 0) {
-            entity.executingBook = false;
+            entity.executeCode();
+        } else if (canRunCode && entity.lines.isEmpty()) {
+            // LOAD CODE
+            entity.lastRan = world.getTime() + entity.executionDelay;
+
+            ItemStack stack = entity.getStack(0);
+            NbtElement pages = stack.getNbt().get("pages");
+            entity.lines = bookIntoString(pages);
+            entity.executeCode();
+        } else if (canRunCode &&  !entity.queue.isEmpty()) {
+            // RUN QUEUE COMMAND
+            entity.lastRan = world.getTime() + entity.executionDelay;
+
+            var dir = entity.queue.pollFirst();
+            moveBot(world, entity, state, dir);
+        } else if (!entity.hasBook() && entity.bookLineIndex > 0) {
+            // END
             entity.bookLineIndex = 0;
         }
     }
-    private void runCommand(World world, BlockPos pos, BlockState state, BotBlockEntity entity, ArrayList<Token> tokens) {
-        int i = entity.bookLineIndex++;
-        Token token = tokens.get(i);
 
-        switch (token.value()) {
-            case "forward":
-                entity.moveBot(world, entity, state, MoveDirections.FORWARD);
-                break;
-            case "back":
-                entity.moveBot(world, entity, state, MoveDirections.BACK);
-                break;
-            case "up":
-                entity.moveBot(world, entity, state, MoveDirections.UP);
-                break;
-            case "down":
-                entity.moveBot(world, entity, state, MoveDirections.DOWN);
-                break;
-            case "left":
-                entity.moveBot(world, entity, state, MoveDirections.LEFT);
-                break;
-            case "right":
-                entity.moveBot(world, entity, state, MoveDirections.RIGHT);
-                break;
-            case "turn left":
-                entity.turn(world, entity, state, TurnDirections.LEFT);
-                break;
-            case "turn right":
-                entity.turn(world, entity, state, TurnDirections.RIGHT);
-                break;
-            case "turn around":
-                entity.turn(world, entity, state, TurnDirections.AROUND);
-                break;
-            default:
-                break;
-        }
-    }
-
-    private void moveBot(World world, BotBlockEntity entity, BlockState state, MoveDirections direction) {
+    private static void moveBot(World world, BotBlockEntity entity, BlockState state, MoveDirections direction) {
         BlockPos currentPos = entity.getPos();
-        BlockPos moveTo;
-        switch (state.get(BotBlock.FACING).toString()) {
+        BlockPos moveTo = currentPos;
+
+        String facing = state.get(BotBlock.FACING).toString();
+
+        int xOffset = 0, zOffset = 0;
+
+        switch (facing) {
             case "north":
-                switch (direction) {
-                    case FORWARD:
-                        moveTo = currentPos.add(0, 0, -1);
-                        break;
-                    case BACK:
-                        moveTo = currentPos.add(0, 0, 1);
-                        break;
-                    case UP:
-                        moveTo = currentPos.add(0, 1, 0);
-                        break;
-                    case DOWN:
-                        moveTo = currentPos.add(0, -1, 0);
-                        break;
-                    case LEFT:
-                        moveTo = currentPos.add(-1, 0, 0);
-                        break;
-                    case RIGHT:
-                        moveTo = currentPos.add(1, 0, 0);
-                        break;
-                    default:
-                        moveTo = currentPos.add(0, 0, 0);
-                        break;
-                }
-                move(world, entity, state, moveTo);
+                zOffset = (direction == MoveDirections.FORWARD) ? -1 : (direction == MoveDirections.BACK) ? 1 : 0;
+                xOffset = (direction == MoveDirections.LEFT) ? -1 : (direction == MoveDirections.RIGHT) ? 1 : 0;
                 break;
             case "south":
-                switch (direction) {
-                    case FORWARD:
-                        moveTo = currentPos.add(0, 0, 1);
-                        break;
-                    case BACK:
-                        moveTo = currentPos.add(0, 0, -1);
-                        break;
-                    case UP:
-                        moveTo = currentPos.add(0, 1, 0);
-                        break;
-                    case DOWN:
-                        moveTo = currentPos.add(0, -1, 0);
-                        break;
-                    case LEFT:
-                        moveTo = currentPos.add(1, 0, 0);
-                        break;
-                    case RIGHT:
-                        moveTo = currentPos.add(-1, 0, 0);
-                        break;
-                    default:
-                        moveTo = currentPos.add(0, 0, 0);
-                        break;
-                }
-                move(world, entity, state, moveTo);
+                zOffset = (direction == MoveDirections.FORWARD) ? 1 : (direction == MoveDirections.BACK) ? -1 : 0;
+                xOffset = (direction == MoveDirections.LEFT) ? 1 : (direction == MoveDirections.RIGHT) ? -1 : 0;
                 break;
             case "east":
-                switch (direction) {
-                    case FORWARD:
-                        moveTo = currentPos.add(1, 0, 0);
-                        break;
-                    case BACK:
-                        moveTo = currentPos.add(-1, 0, 0);
-                        break;
-                    case UP:
-                        moveTo = currentPos.add(0, 1, 0);
-                        break;
-                    case DOWN:
-                        moveTo = currentPos.add(0, -1, 0);
-                        break;
-                    case LEFT:
-                        moveTo = currentPos.add(0, 0, -1);
-                        break;
-                    case RIGHT:
-                        moveTo = currentPos.add(0, 0, 1);
-                        break;
-                    default:
-                        moveTo = currentPos.add(0, 0, 0);
-                        break;
-                }
-                move(world, entity, state, moveTo);
+                xOffset = (direction == MoveDirections.FORWARD) ? 1 : (direction == MoveDirections.BACK) ? -1 : 0;
+                zOffset = (direction == MoveDirections.LEFT) ? -1 : (direction == MoveDirections.RIGHT) ? 1 : 0;
                 break;
             case "west":
-                switch (direction) {
-                    case FORWARD:
-                        moveTo = currentPos.add(-1, 0, 0);
-                        break;
-                    case BACK:
-                        moveTo = currentPos.add(1, 0, 0);
-                        break;
-                    case UP:
-                        moveTo = currentPos.add(0, 1, 0);
-                        break;
-                    case DOWN:
-                        moveTo = currentPos.add(0, -1, 0);
-                        break;
-                    case LEFT:
-                        moveTo = currentPos.add(0, 0, 1);
-                        break;
-                    case RIGHT:
-                        moveTo = currentPos.add(0, 0, -1);
-                        break;
-                    default:
-                        moveTo = currentPos.add(0, 0, 0);
-                        break;
-                }
-                move(world, entity, state, moveTo);
+                xOffset = (direction == MoveDirections.FORWARD) ? -1 : (direction == MoveDirections.BACK) ? 1 : 0;
+                zOffset = (direction == MoveDirections.LEFT) ? 1 : (direction == MoveDirections.RIGHT) ? -1 : 0;
                 break;
         }
+
+        if (direction == MoveDirections.UP) {
+            moveTo = currentPos.add(0, 1, 0);
+        } else if (direction == MoveDirections.DOWN) {
+            moveTo = currentPos.add(0, -1, 0);
+        } else {
+            moveTo = currentPos.add(xOffset, 0, zOffset);
+        }
+
+        move(world, entity, state, moveTo);
     }
 
     // TODO: Figure out how to force GUI to close to prevent duping items.
-    private void move(World world, BotBlockEntity entity, BlockState state, BlockPos moveToPos) {
+    private static void move(World world, BotBlockEntity entity, BlockState state, BlockPos moveToPos) {
         BlockPos currentPos = entity.getPos();
 
         if (!world.isAir(moveToPos)) {
@@ -294,6 +253,9 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
         newEntity.readNbt(nbt);
         newEntity.bookLineIndex = entity.bookLineIndex;
         newEntity.lastRan = entity.lastRan;
+        newEntity.queue = entity.queue;
+        newEntity.lines = entity.lines;
+        newEntity.concative = entity.concative;
 
         world.removeBlockEntity(currentPos);
         world.removeBlock(currentPos, true);
@@ -313,7 +275,6 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
                         world.setBlockState(entity.pos, state.with(BotBlock.FACING, Direction.get(AxisDirection.POSITIVE, Axis.Z)));
                         break;
                 }
-                entity.executingBook = false;
                 break;
             case "south":
                 switch (turn) {
@@ -327,7 +288,6 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
                         world.setBlockState(entity.pos, state.with(BotBlock.FACING, Direction.get(AxisDirection.NEGATIVE, Axis.Z)));
                         break;
                 }
-                entity.executingBook = false;
                 break;
             case "east":
                 switch (turn) {
@@ -341,7 +301,6 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
                         world.setBlockState(entity.pos, state.with(BotBlock.FACING, Direction.get(AxisDirection.NEGATIVE, Axis.X)));
                         break;
                 }
-                entity.executingBook = false;
                 break;
             case "west":
                 switch (turn) {
@@ -355,7 +314,6 @@ public class BotBlockEntity extends BlockEntity implements NamedScreenHandlerFac
                         world.setBlockState(entity.pos, state.with(BotBlock.FACING, Direction.get(AxisDirection.POSITIVE, Axis.X)));
                         break;
                 }
-                entity.executingBook = false;
                 break;
         }
     }

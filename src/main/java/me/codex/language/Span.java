@@ -14,6 +14,10 @@ public class Span {
   public String toString() {
     return String.format("(%d:%d..%d)", this.line, this.start, this.end);
   }
+  @Override
+  public Object clone() {
+    return new Span(this.line, this.start, this.end);
+  }
 
   public void shiftRight() {
     this.end += 1;

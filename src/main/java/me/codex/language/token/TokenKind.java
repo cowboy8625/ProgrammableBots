@@ -1,0 +1,26 @@
+package me.codex.language.token;
+
+public enum TokenKind {
+    Number,
+    Ident,
+    Plus,
+    BangEqual,
+    EqualEqual,
+    Greater,
+    GreaterEqual,
+    Less,
+    LessEqual,
+    Minus,
+    Slash,
+    Star,
+    Bang,
+    True,
+    False,
+    Nil,
+    String,
+    LeftParen,
+    RightParen,
+    Semicolon,
+    Fn,
+    EOF,
+}

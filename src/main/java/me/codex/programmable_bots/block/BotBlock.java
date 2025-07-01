@@ -1,7 +1,5 @@
 package me.codex.programmable_bots.block;
 
-import org.jetbrains.annotations.Nullable;
-
 import me.codex.programmable_bots.block.entity.BotBlockEntity;
 import me.codex.programmable_bots.block.entity.ModBlockEntities;
 import net.minecraft.block.Block;
@@ -31,7 +29,6 @@ public class BotBlock extends BlockWithEntity {
         super(settings);
     }
 
-    @Nullable
     @Override
     public BlockState getPlacementState(ItemPlacementContext context) {
         return (BlockState) this.getDefaultState().with(FACING, context.getPlayerFacing().getOpposite());
@@ -76,13 +73,11 @@ public class BotBlock extends BlockWithEntity {
         return ActionResult.SUCCESS;
     }
 
-    @Nullable
     @Override
     public BlockEntity createBlockEntity(BlockPos pos, BlockState state) {
         return new BotBlockEntity(pos, state);
     }
 
-    @Nullable
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(World world, BlockState state, BlockEntityType<T> type) {
         return checkType(type, ModBlockEntities.BOT, BotBlockEntity::tick);
